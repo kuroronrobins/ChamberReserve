@@ -7,7 +7,9 @@ Use this file as the first orientation point for implementation work in this rep
 - The product-level system specification is in `docs/CHAMBER_RESERVE_SYSTEM_SPEC.md`.
 - The long-term implementation plan is in `docs/CHAMBER_RESERVE_LONG_TERM_IMPLEMENTATION_PLAN.md`.
 - The repository is still in pre-implementation setup. Do not assume application files, scripts, API routes, or tests exist until you verify them.
-- The first implementation target is a single temperature-cycle chamber, while the user workflow must already be shaped for future multi-chamber search.
+- The first implementation target is UI/UX foundation for a single temperature-cycle chamber, using local/mock data where needed.
+- Server API and SQLite persistence come after the user-facing workflow is validated in the browser.
+- The user workflow must already be shaped for future multi-chamber search.
 
 ## Goal Execution Policy
 
@@ -59,8 +61,8 @@ Use TeamPlanner's proven local stack as the default unless a later phase documen
 
 - React + Vite + TypeScript for the browser UI.
 - Tailwind CSS and lucide-react for interface styling and icons.
-- Node.js TypeScript server for local API endpoints.
-- SQLite for local persistence.
+- Node.js TypeScript server for local API endpoints, starting only in the server/persistence phase.
+- SQLite for local persistence, starting only in the server/persistence phase.
 - Separate ChamberReserve ports, environment variables, DB paths, logs, and runtime files from TeamPlanner.
 
 Do not copy TeamPlanner domain names, task/Gantt/leave concepts, roles model, or authentication system into ChamberReserve. Reuse architectural patterns, not product concepts.
@@ -83,6 +85,7 @@ Exact paths may change during implementation, but keep the boundaries clear:
 
 - Keep implementation scoped to the active phase document.
 - Preserve the product specification unless the user updates it.
+- When the active phase is UI/UX-first, do not add server API, SQLite persistence, live runtime, or production DB behavior unless the phase document explicitly authorizes it.
 - Prefer small pure helpers for reservation math and conflict rules before wiring them into React.
 - Keep UI behavior and server validation aligned. A client-side candidate must still be rechecked on final reservation commit.
 - Do not add external dependencies unless they remove real complexity and are justified in the active phase.
