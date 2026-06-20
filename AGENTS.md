@@ -5,6 +5,7 @@ Use this file as the first orientation point for implementation work in this rep
 ## Current Status
 
 - The product-level system specification is in `docs/CHAMBER_RESERVE_SYSTEM_SPEC.md`.
+- The long-term implementation plan is in `docs/CHAMBER_RESERVE_LONG_TERM_IMPLEMENTATION_PLAN.md`.
 - The repository is still in pre-implementation setup. Do not assume application files, scripts, API routes, or tests exist until you verify them.
 - The first implementation target is a single temperature-cycle chamber, while the user workflow must already be shaped for future multi-chamber search.
 
@@ -20,11 +21,12 @@ Use this file as the first orientation point for implementation work in this rep
 
 1. `AGENTS.md`.
 2. `docs/CHAMBER_RESERVE_SYSTEM_SPEC.md`.
-3. `docs/GOAL_IMPLEMENTATION_POLICY.md`.
-4. The active phase start document, such as `docs/CHAMBER_RESERVE_PHASE1_FOUNDATION_START.md`.
-5. `package.json`, once it exists, for scripts and dependency versions.
-6. Application entry points, once they exist.
-7. Only then open the specific feature, domain, server, or test file related to the task.
+3. `docs/CHAMBER_RESERVE_LONG_TERM_IMPLEMENTATION_PLAN.md`.
+4. `docs/GOAL_IMPLEMENTATION_POLICY.md`.
+5. The active phase start document, such as `docs/CHAMBER_RESERVE_PHASE1_FOUNDATION_START.md`.
+6. `package.json`, once it exists, for scripts and dependency versions.
+7. Application entry points, once they exist.
+8. Only then open the specific feature, domain, server, or test file related to the task.
 
 ## Do Not Read By Default
 

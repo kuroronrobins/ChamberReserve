@@ -9,6 +9,7 @@ Phase 1 では、ChamberReserve の最小実用形を作る。
 ## 参照すべき決定事項
 
 - 完成方針: `docs/CHAMBER_RESERVE_SYSTEM_SPEC.md`
+- 長期実装計画: `docs/CHAMBER_RESERVE_LONG_TERM_IMPLEMENTATION_PLAN.md`
 - 実装運用方針: `AGENTS.md`
 - `/goal` 方針: `docs/GOAL_IMPLEMENTATION_POLICY.md`
 
