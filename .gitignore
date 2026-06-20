@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+coverage/
+
+# Local data and runtime artifacts
+data/*.sqlite
+data/*.sqlite-*
+logs/
+*.log
+*.pid
+.chamberreserve-*.pid
+
+# Validation and temporary artifacts
+tmp_validation/
+.vite/
+
+# Local Codex workspace metadata
+.agents/
+.codex/
+
+# Environment overrides
+.env
+.env.*
+!.env.example
+
+# OS/editor noise
+Thumbs.db
+Desktop.ini
+.DS_Store
+.vscode/
+.idea/
