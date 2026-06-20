@@ -14,6 +14,7 @@
 - docs/CHAMBER_RESERVE_LONG_TERM_IMPLEMENTATION_PLAN.md
 - docs/GOAL_IMPLEMENTATION_POLICY.md
 - docs/CHAMBER_RESERVE_PHASE1_FOUNDATION_START.md
+- docs/CHAMBER_RESERVE_PHASE1_UI_UX_EXECUTION_PLAN.md
 
 # Scope
 - React + Vite + TypeScript の最小アプリ基盤。
@@ -22,6 +23,7 @@
 - 温度サイクル型の標準条件、搬入可能25°C定常期間、運転期間、搬出可能25°C定常期間。
 - 断片化候補を出さない予約候補生成。
 - 4桁PIN自動発行とPINによる変更/削除。
+- Phase 1実行計画のチェックポイント順に進め、必要な場合だけPhase 1内で分割判断する。
 
 # Out of Scope
 - 複数チャンバー実運用。
@@ -50,6 +52,7 @@
 - npm run test
 - npm run build
 - ブラウザで空き検索、ブロック選択、予約確定、PIN編集/削除、利用後削除不可、管理者一時利用停止と影響予約表示を確認する。
+- Phase 2へ渡すAPI、保存データ、サーバー側判定メモを整理する。
 
 # Progress
 チェックポイントごとに、変更ファイル、検証結果、残件、ブロック有無を短く報告する。

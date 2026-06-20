@@ -26,9 +26,10 @@ Use this file as the first orientation point for implementation work in this rep
 3. `docs/CHAMBER_RESERVE_LONG_TERM_IMPLEMENTATION_PLAN.md`.
 4. `docs/GOAL_IMPLEMENTATION_POLICY.md`.
 5. The active phase start document, such as `docs/CHAMBER_RESERVE_PHASE1_FOUNDATION_START.md`.
-6. `package.json`, once it exists, for scripts and dependency versions.
-7. Application entry points, once they exist.
-8. Only then open the specific feature, domain, server, or test file related to the task.
+6. The active phase execution plan, such as `docs/CHAMBER_RESERVE_PHASE1_UI_UX_EXECUTION_PLAN.md`, when it exists.
+7. `package.json`, once it exists, for scripts and dependency versions.
+8. Application entry points, once they exist.
+9. Only then open the specific feature, domain, server, or test file related to the task.
 
 ## Do Not Read By Default
 

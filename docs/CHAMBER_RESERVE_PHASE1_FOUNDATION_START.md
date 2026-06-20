@@ -14,6 +14,7 @@ Phase 1 では、ChamberReserve のユーザー側UI/UXを先に固める。
 
 - 完成方針: `docs/CHAMBER_RESERVE_SYSTEM_SPEC.md`
 - 長期実装計画: `docs/CHAMBER_RESERVE_LONG_TERM_IMPLEMENTATION_PLAN.md`
+- Phase 1 実行計画: `docs/CHAMBER_RESERVE_PHASE1_UI_UX_EXECUTION_PLAN.md`
 - 実装運用方針: `AGENTS.md`
 - `/goal` 方針: `docs/GOAL_IMPLEMENTATION_POLICY.md`
 
@@ -33,6 +34,8 @@ Phase 1 では、ChamberReserve のユーザー側UI/UXを先に固める。
 10. 管理者が一時利用停止を登録し、影響を受ける予約を確認できる。
 
 この時点では、操作結果が永続保存される必要はない。ブラウザ上で自然な体験として確認できることを優先する。
+
+実装時は、`docs/CHAMBER_RESERVE_PHASE1_UI_UX_EXECUTION_PLAN.md` のチェックポイント順に進める。Phase 1 は原則として1つの `/goal` で実装するが、UI方針の大幅な見直しが必要になった場合だけ、Phase 1-A / 1-B / 1-C に分割する。
 
 ## 実装対象
 
@@ -144,6 +147,7 @@ Phase 1 完了時には、少なくとも次を確認する。
 - `npm run test`。
 - `npm run build`。
 - ブラウザで、空き検索、ブロック選択、予約確定、PIN編集、管理者一時利用停止まで確認する。
+- Phase 2 に渡すAPI、保存データ、サーバー側判定のメモが整理されている。
 
 ## 完了条件
 
