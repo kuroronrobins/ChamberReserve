@@ -6,10 +6,10 @@ Use this file as the first orientation point for implementation work in this rep
 
 - The product-level system specification is in `docs/CHAMBER_RESERVE_SYSTEM_SPEC.md`.
 - The long-term implementation plan is in `docs/CHAMBER_RESERVE_LONG_TERM_IMPLEMENTATION_PLAN.md`.
-- The repository is still in pre-implementation setup. Do not assume application files, scripts, API routes, or tests exist until you verify them.
-- The first implementation target is UI/UX foundation for a single temperature-cycle chamber, using local/mock data where needed.
-- Server API and SQLite persistence come after the user-facing workflow is validated in the browser.
-- The user workflow must already be shaped for future multi-chamber search.
+- Completed implementation/start documents are archived under `docs/archive/2026-06-22-implemented/`.
+- The repository now has React/Vite UI, Node.js API, SQLite-backed local persistence, tests, and a lightweight `main.py` launcher. Still verify files, scripts, routes, and tests before relying on them.
+- Current active start/goal documents are `docs/CHAMBER_RESERVE_SEARCH_BLOCK_INTENT_INPUT_START.md`, `docs/CHAMBER_RESERVE_SEARCH_BLOCK_INTENT_INPUT_GOAL.md`, `docs/CHAMBER_RESERVE_CHAMBER_ADMIN_CONFIGURATION_START.md`, and `docs/CHAMBER_RESERVE_CHAMBER_ADMIN_CONFIGURATION_GOAL.md`.
+- The user workflow must remain shaped for multi-chamber search.
 
 ## Goal Execution Policy
 
@@ -25,8 +25,8 @@ Use this file as the first orientation point for implementation work in this rep
 2. `docs/CHAMBER_RESERVE_SYSTEM_SPEC.md`.
 3. `docs/CHAMBER_RESERVE_LONG_TERM_IMPLEMENTATION_PLAN.md`.
 4. `docs/GOAL_IMPLEMENTATION_POLICY.md`.
-5. The active phase start document, such as `docs/CHAMBER_RESERVE_PHASE1_FOUNDATION_START.md`.
-6. The active phase execution plan, such as `docs/CHAMBER_RESERVE_PHASE1_UI_UX_EXECUTION_PLAN.md`, when it exists.
+5. The active phase start document, such as `docs/CHAMBER_RESERVE_SEARCH_BLOCK_INTENT_INPUT_START.md` or `docs/CHAMBER_RESERVE_CHAMBER_ADMIN_CONFIGURATION_START.md`.
+6. The active phase goal or execution plan, such as `docs/CHAMBER_RESERVE_SEARCH_BLOCK_INTENT_INPUT_GOAL.md` or `docs/CHAMBER_RESERVE_CHAMBER_ADMIN_CONFIGURATION_GOAL.md`, when it exists.
 7. `package.json`, once it exists, for scripts and dependency versions.
 8. Application entry points, once they exist.
 9. Only then open the specific feature, domain, server, or test file related to the task.
@@ -35,6 +35,7 @@ Use this file as the first orientation point for implementation work in this rep
 
 - `node_modules/`, `dist/`, `data/*.sqlite`, `*.log`, runtime PID files, and `tmp_validation/`.
 - Generated reports or validation artifacts unless the task is about validation results.
+- `docs/archive/` unless the task is about historical context or archived implementation results.
 - `package-lock.json` unless changing dependencies, auditing lock resolution, or investigating install/build failures.
 - Large future UI or server files in full. Search first with `rg`, then read the narrow range that matters.
 
