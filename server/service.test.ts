@@ -7,11 +7,13 @@ import type { BlockId, CycleCount, PlacementMode, TemperatureCycleConfig } from 
 import { buildCycleWindow, canCommitCandidate } from '../src/domain/reservationRules';
 import { listChambers, listConfigRevisions, listReservations, listSuspensions, openDatabase, type ChamberReserveDatabase } from './db.ts';
 import {
+  archiveChamberConfig,
   createChamberConfigRevision,
   createReservationFromCandidate,
   createSuspension,
   deleteReservationByPin,
   lookupReservationByPin,
+  patchChamberConfigRevision,
   previewSuspension,
   publishChamberConfig,
   searchCandidateResult,
@@ -259,6 +261,69 @@ describe('ChamberReserve server persistence service', () => {
     const tc01Candidate = match.find((candidate) => candidate.chamberId === 'tc-01');
     expect(tc01Candidate?.occupiedStartAt).toBe(new Date('2026-06-28T13:30:00').toISOString());
     expect(tc01Candidate?.occupiedEndAt).toBe(new Date('2026-06-28T19:00:00').toISOString());
+  });
+
+  it('keeps config revisions in draft, active, and archived states with guarded transitions', () => {
+    const db = openTempDb();
+    const draft = createChamberConfigRevision(db, {
+      chamberId: 'tc-01',
+      config: {
+        ...DEFAULT_FIXED_CONDITION_CONFIG,
+        condition: { temperatureC: 35, humidityRh: 75 },
+      },
+    });
+    expect(draft.ok).toBe(true);
+    if (!draft.ok) return;
+    expect(draft.revision.status).toBe('draft');
+
+    const patched = patchChamberConfigRevision(db, draft.revision.id, {
+      chamberId: 'tc-01',
+      config: {
+        ...DEFAULT_FIXED_CONDITION_CONFIG,
+        condition: { temperatureC: 40, humidityRh: 80 },
+      },
+    });
+    expect(patched.ok).toBe(true);
+    if (!patched.ok) return;
+    expect(patched.revision.status).toBe('draft');
+
+    const published = publishChamberConfig(db, patched.revision.id);
+    expect(published.ok).toBe(true);
+    if (!published.ok) return;
+    expect(published.revision.status).toBe('active');
+    expect(listChambers(db).find((chamber) => chamber.id === 'tc-01')?.activeConfigRevisionId).toBe(patched.revision.id);
+    expect(listConfigRevisions(db, 'tc-01').find((revision) => revision.id === 'tc-01-config-r1')?.status).toBe('archived');
+
+    expect(archiveChamberConfig(db, published.revision.id)).toMatchObject({
+      ok: false,
+      status: 409,
+      error: 'active_config_revision_archive_blocked',
+    });
+    expect(patchChamberConfigRevision(db, published.revision.id, {
+      chamberId: 'tc-01',
+      config: DEFAULT_USER_MANAGED_CONFIG,
+    })).toMatchObject({
+      ok: false,
+      status: 409,
+      error: 'config_revision_not_draft',
+    });
+
+    const unusedDraft = createChamberConfigRevision(db, {
+      chamberId: 'tc-01',
+      config: DEFAULT_USER_MANAGED_CONFIG,
+    });
+    expect(unusedDraft.ok).toBe(true);
+    if (!unusedDraft.ok) return;
+    const archived = archiveChamberConfig(db, unusedDraft.revision.id);
+    expect(archived.ok).toBe(true);
+    if (archived.ok) {
+      expect(archived.revision.status).toBe('archived');
+    }
+    expect(publishChamberConfig(db, 'missing-config-revision')).toMatchObject({
+      ok: false,
+      status: 404,
+      error: 'config_revision_not_found',
+    });
   });
 
   it('stores requested condition only for user-managed chamber reservations', () => {

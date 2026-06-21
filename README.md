@@ -16,6 +16,8 @@ Phase 3.5 時点では、React + Vite + TypeScript のブラウザUI、Node.js A
 - [System specification](docs/CHAMBER_RESERVE_SYSTEM_SPEC.md)
 - [Long-term implementation plan](docs/CHAMBER_RESERVE_LONG_TERM_IMPLEMENTATION_PLAN.md)
 - [Goal implementation policy](docs/GOAL_IMPLEMENTATION_POLICY.md)
+- [Overnight Phase 3.6 expansion start](docs/CHAMBER_RESERVE_OVERNIGHT_PHASE3_6_EXPANSION_START.md)
+- [Overnight Phase 3.6 expansion goal](docs/CHAMBER_RESERVE_OVERNIGHT_PHASE3_6_EXPANSION_GOAL.md)
 - [Active search block intent start](docs/CHAMBER_RESERVE_SEARCH_BLOCK_INTENT_INPUT_START.md)
 - [Active search block intent goal](docs/CHAMBER_RESERVE_SEARCH_BLOCK_INTENT_INPUT_GOAL.md)
 - [Active chamber admin configuration start](docs/CHAMBER_RESERVE_CHAMBER_ADMIN_CONFIGURATION_START.md)

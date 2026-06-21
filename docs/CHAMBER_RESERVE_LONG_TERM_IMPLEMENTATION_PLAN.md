@@ -470,5 +470,7 @@ Phase 1 から Phase 3.5 までの完了済み開始文書、goal、実装サマ
 - `docs/CHAMBER_RESERVE_CHAMBER_ADMIN_CONFIGURATION_GOAL.md`
 - `docs/CHAMBER_RESERVE_SEARCH_BLOCK_INTENT_INPUT_START.md`
 - `docs/CHAMBER_RESERVE_SEARCH_BLOCK_INTENT_INPUT_GOAL.md`
+- `docs/CHAMBER_RESERVE_OVERNIGHT_PHASE3_6_EXPANSION_START.md`
+- `docs/CHAMBER_RESERVE_OVERNIGHT_PHASE3_6_EXPANSION_GOAL.md`
 
-次に進める作業は、上記の現行 start/goal から選ぶ。検索条件入力のブロック意図整理と、チャンバー管理設定基盤はどちらも既存の条件検索入口を維持し、TeamPlanner の業務概念やアカウント管理を持ち込まない。
+睡眠中などの長時間実装では、`CHAMBER_RESERVE_OVERNIGHT_PHASE3_6_EXPANSION_START.md` を上位開始文書として使う。検索条件入力のブロック意図整理と、チャンバー管理設定基盤はどちらも既存の条件検索入口を維持し、TeamPlanner の業務概念やアカウント管理を持ち込まない。

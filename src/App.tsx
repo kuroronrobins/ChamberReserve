@@ -24,6 +24,7 @@ import StatusBadge from './components/StatusBadge';
 import CalendarDateInput from './components/date/CalendarDateInput';
 import SearchFlow, { type SearchStep, type SubmittedSearchState } from './components/search/SearchFlow';
 import {
+  archiveChamberConfigRevisionApi,
   createChamberConfigRevisionApi,
   createReservationApi,
   createSuspensionApi,
@@ -31,6 +32,7 @@ import {
   fetchCandidateResult,
   fetchServerState,
   lookupReservationApi,
+  patchChamberConfigRevisionApi,
   publishChamberConfigRevisionApi,
   updateReservationApi,
 } from './api/client';
@@ -84,7 +86,7 @@ import {
   normalizeCycleCount,
   resolveReservationStatus,
   resolveStepTimes,
-  validateCycleProgram,
+  validateChamberConditionConfig,
   windowsOverlap,
 } from './domain/reservationRules';
 import { searchReservationCandidateResult, type CandidateSearchResult } from './domain/searchEngine';
@@ -256,14 +258,18 @@ function removeCandidateFromSearchResult(result: CandidateSearchResult, candidat
   };
 }
 
-function createLocalConfigRevision(chamber: Chamber, config: ChamberConditionConfig): ChamberConfigRevision {
-  const revision = (Number(chamber.activeConfigRevision.revision) || 1) + 1;
+function createLocalConfigRevision(
+  chamber: Chamber,
+  config: ChamberConditionConfig,
+  revision: number,
+  status: ChamberConfigRevision['status'] = 'active',
+): ChamberConfigRevision {
   const nowIso = new Date().toISOString();
   return {
     id: `${chamber.id}-config-r${revision}`,
     chamberId: chamber.id,
     revision,
-    status: 'active',
+    status,
     ownership: config.type === 'user_managed_condition' ? 'user_managed' : 'admin_managed',
     adminManagedKind: config.type === 'user_managed_condition' ? undefined : config.type,
     effectiveFrom: nowIso,
@@ -271,7 +277,7 @@ function createLocalConfigRevision(chamber: Chamber, config: ChamberConditionCon
     cyclePeriodMinutes: config.type === 'temperature_cycle' ? config.cyclePeriodMinutes : undefined,
     createdAt: nowIso,
     updatedAt: nowIso,
-    publishedAt: nowIso,
+    publishedAt: status === 'active' ? nowIso : undefined,
   };
 }
 
@@ -383,7 +389,7 @@ export default function App() {
   );
   const selectionIsContiguous = selectedBlocks.length === 0 || isContiguousBlockSet(selectedBlocks);
   const searchValidationMessage = selectedBlocks.length === 0
-    ? '希望ブロックを1つ以上選択してください。'
+    ? '希望ブロック条件を1つ以上選択してください。'
     : !selectionIsContiguous
       ? 'ブロックは連続した範囲で選択してください。'
       : !testName || !requesterName || !department
@@ -450,7 +456,7 @@ export default function App() {
   function handleSelectedBlocksChange(blocks: BlockId[]) {
     setSelectedBlocks(blocks);
     if (
-      searchMessage === '希望ブロックを1つ以上選択してください。'
+      searchMessage === '希望ブロック条件を1つ以上選択してください。'
       || searchMessage === 'ブロックは連続した範囲で選択してください。'
     ) {
       setSearchMessage('');
@@ -785,40 +791,134 @@ export default function App() {
     }
   }
 
-  async function publishChamberConfig(chamberId: string, draftConfig: ChamberConditionConfig) {
+  function clearSearchStateAfterConfigChange() {
+    setCandidateResults([]);
+    setCandidateSearchResult(null);
+    setSubmittedSearch(null);
+    setSelectedCandidateId(null);
+    setLastReservation(null);
+    setSearchStep('conditions');
+  }
+
+  function nextLocalConfigRevisionNumber(chamberId: string): number {
+    return Math.max(
+      0,
+      ...configRevisions
+        .filter((revision) => revision.chamberId === chamberId)
+        .map((revision) => revision.revision),
+    ) + 1;
+  }
+
+  async function createChamberConfigDraft(chamberId: string, draftConfig: ChamberConditionConfig): Promise<ChamberConfigRevision> {
     const chamber = chambers.find((item) => item.id === chamberId);
     if (!chamber) {
       throw new Error('chamber_not_found');
     }
     const config = normalizeConfigForPublish(draftConfig);
     if (dataMode === 'server') {
-      const draft = await createChamberConfigRevisionApi(chamberId, config);
-      const result = await publishChamberConfigRevisionApi(chamberId, draft.id);
+      const revision = await createChamberConfigRevisionApi(chamberId, config);
+      setConfigRevisions((current) => [revision, ...current.filter((item) => item.id !== revision.id)]);
+      return revision;
+    }
+    const revision = createLocalConfigRevision(chamber, config, nextLocalConfigRevisionNumber(chamberId), 'draft');
+    setConfigRevisions((current) => [revision, ...current]);
+    return revision;
+  }
+
+  async function saveChamberConfigDraft(
+    chamberId: string,
+    revisionId: string,
+    draftConfig: ChamberConditionConfig,
+  ): Promise<ChamberConfigRevision> {
+    const config = normalizeConfigForPublish(draftConfig);
+    if (dataMode === 'server') {
+      const revision = await patchChamberConfigRevisionApi(chamberId, revisionId, config);
+      setConfigRevisions((current) => [revision, ...current.filter((item) => item.id !== revision.id)]);
+      return revision;
+    }
+    const currentRevision = configRevisions.find((revision) => revision.id === revisionId && revision.chamberId === chamberId);
+    if (!currentRevision) {
+      throw new Error('config_revision_not_found');
+    }
+    if (currentRevision.status !== 'draft') {
+      throw new Error('config_revision_not_draft');
+    }
+    const revision: ChamberConfigRevision = {
+      ...currentRevision,
+      ownership: config.type === 'user_managed_condition' ? 'user_managed' : 'admin_managed',
+      adminManagedKind: config.type === 'user_managed_condition' ? undefined : config.type,
+      config,
+      cyclePeriodMinutes: config.type === 'temperature_cycle' ? config.cyclePeriodMinutes : undefined,
+      updatedAt: new Date().toISOString(),
+    };
+    setConfigRevisions((current) => [revision, ...current.filter((item) => item.id !== revision.id)]);
+    return revision;
+  }
+
+  async function publishChamberConfigRevision(chamberId: string, revisionId: string): Promise<void> {
+    if (dataMode === 'server') {
+      const result = await publishChamberConfigRevisionApi(chamberId, revisionId);
       setChambers(result.chambers);
       setConfigRevisions(result.configRevisions);
-      setCandidateResults([]);
-      setCandidateSearchResult(null);
-      setSubmittedSearch(null);
-      setSelectedCandidateId(null);
-      setSearchStep('conditions');
+      clearSearchStateAfterConfigChange();
       return;
     }
-    const revision = createLocalConfigRevision(chamber, config);
-    setConfigRevisions((current) => [revision, ...current.filter((item) => item.id !== revision.id)]);
+    const revision = configRevisions.find((item) => item.id === revisionId && item.chamberId === chamberId);
+    if (!revision) {
+      throw new Error('config_revision_not_found');
+    }
+    if (revision.status !== 'draft') {
+      throw new Error('config_revision_not_draft');
+    }
+    const nowIso = new Date().toISOString();
+    const activeRevision: ChamberConfigRevision = {
+      ...revision,
+      status: 'active',
+      effectiveFrom: revision.effectiveFrom || nowIso,
+      updatedAt: nowIso,
+      publishedAt: nowIso,
+    };
+    setConfigRevisions((current) => [
+      activeRevision,
+      ...current
+        .filter((item) => item.id !== revisionId)
+        .map((item) =>
+          item.chamberId === chamberId && item.status === 'active'
+            ? { ...item, status: 'archived' as const, effectiveTo: nowIso, updatedAt: nowIso }
+            : item,
+        ),
+    ]);
     setChambers((current) => current.map((item) => item.id === chamberId
       ? {
         ...item,
-        type: config.type,
-        activeConfigRevisionId: revision.id,
-        activeConfigRevision: revision,
+        type: activeRevision.config.type,
+        activeConfigRevisionId: activeRevision.id,
+        activeConfigRevision: activeRevision,
       }
       : item,
     ));
-    setCandidateResults([]);
-    setCandidateSearchResult(null);
-    setSubmittedSearch(null);
-    setSelectedCandidateId(null);
-    setSearchStep('conditions');
+    clearSearchStateAfterConfigChange();
+  }
+
+  async function archiveChamberConfigDraft(chamberId: string, revisionId: string): Promise<void> {
+    if (dataMode === 'server') {
+      const result = await archiveChamberConfigRevisionApi(chamberId, revisionId);
+      setChambers(result.chambers);
+      setConfigRevisions(result.configRevisions);
+      return;
+    }
+    const revision = configRevisions.find((item) => item.id === revisionId && item.chamberId === chamberId);
+    if (!revision) {
+      throw new Error('config_revision_not_found');
+    }
+    if (revision.status === 'active') {
+      throw new Error('active_config_revision_archive_blocked');
+    }
+    const nowIso = new Date().toISOString();
+    setConfigRevisions((current) => current.map((item) => item.id === revisionId
+      ? { ...item, status: 'archived' as const, effectiveTo: nowIso, updatedAt: nowIso }
+      : item,
+    ));
   }
 
   return (
@@ -955,7 +1055,10 @@ export default function App() {
           <AdminView
             chambers={chambers}
             configRevisions={configRevisions}
-            onPublishConfig={publishChamberConfig}
+            onCreateConfigDraft={createChamberConfigDraft}
+            onSaveConfigDraft={saveChamberConfigDraft}
+            onPublishConfigRevision={publishChamberConfigRevision}
+            onArchiveConfigDraft={archiveChamberConfigDraft}
             suspensionChamberId={suspensionChamberId}
             setSuspensionChamberId={setSuspensionChamberId}
             suspensionReason={suspensionReason}
@@ -1565,7 +1668,10 @@ function EditView({
 interface AdminViewProps {
   chambers: Chamber[];
   configRevisions: ChamberConfigRevision[];
-  onPublishConfig: (chamberId: string, config: ChamberConditionConfig) => Promise<void>;
+  onCreateConfigDraft: (chamberId: string, config: ChamberConditionConfig) => Promise<ChamberConfigRevision>;
+  onSaveConfigDraft: (chamberId: string, revisionId: string, config: ChamberConditionConfig) => Promise<ChamberConfigRevision>;
+  onPublishConfigRevision: (chamberId: string, revisionId: string) => Promise<void>;
+  onArchiveConfigDraft: (chamberId: string, revisionId: string) => Promise<void>;
   suspensionChamberId: string;
   setSuspensionChamberId: (value: string) => void;
   suspensionReason: string;
@@ -1590,7 +1696,10 @@ interface AdminViewProps {
 function AdminView({
   chambers,
   configRevisions,
-  onPublishConfig,
+  onCreateConfigDraft,
+  onSaveConfigDraft,
+  onPublishConfigRevision,
+  onArchiveConfigDraft,
   suspensionChamberId,
   setSuspensionChamberId,
   suspensionReason,
@@ -1614,15 +1723,25 @@ function AdminView({
   const [selectedChamberId, setSelectedChamberId] = useState(chambers[0]?.id ?? CHAMBER.id);
   const selectedChamber = chambers.find((chamber) => chamber.id === selectedChamberId) ?? chambers[0] ?? CHAMBER;
   const [draftConfig, setDraftConfig] = useState<ChamberConditionConfig>(clone(selectedChamber.activeConfigRevision.config));
+  const [editingRevisionId, setEditingRevisionId] = useState<string | null>(null);
   const [configMessage, setConfigMessage] = useState('');
 
   useEffect(() => {
     const current = chambers.find((chamber) => chamber.id === selectedChamberId) ?? chambers[0] ?? CHAMBER;
     setDraftConfig(clone(normalizeConfigForPublish(current.activeConfigRevision.config)));
+    setEditingRevisionId(null);
     setConfigMessage('');
   }, [chambers, selectedChamberId]);
 
-  const activeRevisions = configRevisions.filter((revision) => revision.chamberId === selectedChamber.id);
+  const selectedRevisions = useMemo(
+    () => configRevisions
+      .filter((revision) => revision.chamberId === selectedChamber.id)
+      .sort((first, second) => second.revision - first.revision),
+    [configRevisions, selectedChamber.id],
+  );
+  const editingRevision = editingRevisionId
+    ? selectedRevisions.find((revision) => revision.id === editingRevisionId) ?? null
+    : null;
   const ownership = draftConfig.type === 'user_managed_condition' ? 'user_managed' : 'admin_managed';
   const adminKind: AdminManagedConditionKind = draftConfig.type === 'fixed_condition' ? 'fixed_condition' : 'temperature_cycle';
 
@@ -1640,18 +1759,82 @@ function AdminView({
     setDraftConfig(value === 'fixed_condition' ? clone(DEFAULT_FIXED_CONDITION_CONFIG) : clone(DEFAULT_TEMPERATURE_CYCLE_CONFIG));
   };
 
-  const publish = async () => {
+  const loadRevision = (revision: ChamberConfigRevision) => {
+    setDraftConfig(clone(normalizeConfigForPublish(revision.config)));
+    setEditingRevisionId(revision.status === 'draft' ? revision.id : null);
+    setConfigMessage(revision.status === 'draft' ? `rev.${revision.revision} を編集中です。` : `rev.${revision.revision} を新規draftの元として読み込みました。`);
+  };
+
+  const validateDraftConfig = () => {
     const normalized = normalizeConfigForPublish(draftConfig);
-    const errors = normalized.type === 'temperature_cycle' ? validateCycleProgram(normalized) : [];
+    const errors = validateChamberConditionConfig(normalized);
     if (errors.length > 0) {
       setConfigMessage(errors.join(' / '));
+      return null;
+    }
+    return normalized;
+  };
+
+  const saveDraft = async () => {
+    const normalized = validateDraftConfig();
+    if (!normalized) {
+      return null;
+    }
+    try {
+      const revision = editingRevision?.status === 'draft'
+        ? await onSaveConfigDraft(selectedChamber.id, editingRevision.id, normalized)
+        : await onCreateConfigDraft(selectedChamber.id, normalized);
+      setEditingRevisionId(revision.id);
+      setConfigMessage(`rev.${revision.revision} をdraft保存しました。`);
+      return revision;
+    } catch {
+      setConfigMessage('draft保存に失敗しました。設定値と設定版の状態を確認してください。');
+      return null;
+    }
+  };
+
+  const publish = async () => {
+    const revision = await saveDraft();
+    if (!revision) {
       return;
     }
     try {
-      await onPublishConfig(selectedChamber.id, normalized);
-      setConfigMessage('設定を公開しました。');
+      await onPublishConfigRevision(selectedChamber.id, revision.id);
+      setEditingRevisionId(null);
+      setConfigMessage(`rev.${revision.revision} を公開しました。既存activeはarchivedになります。`);
     } catch {
-      setConfigMessage('設定を公開できませんでした。');
+      setConfigMessage('公開に失敗しました。draft状態と公開済み設定を確認してください。');
+    }
+  };
+
+  const publishExistingDraft = async (revision: ChamberConfigRevision) => {
+    if (revision.status !== 'draft') {
+      setConfigMessage('draft以外は直接公開できません。読み込んで新しいdraftとして保存してください。');
+      return;
+    }
+    try {
+      await onPublishConfigRevision(selectedChamber.id, revision.id);
+      setEditingRevisionId(null);
+      setConfigMessage(`rev.${revision.revision} を公開しました。`);
+    } catch {
+      setConfigMessage('公開に失敗しました。');
+    }
+  };
+
+  const archiveDraft = async (revision: ChamberConfigRevision) => {
+    if (revision.status === 'active') {
+      setConfigMessage('active設定は直接archiveできません。別のdraftを公開すると自動でarchivedになります。');
+      return;
+    }
+    try {
+      await onArchiveConfigDraft(selectedChamber.id, revision.id);
+      if (editingRevisionId === revision.id) {
+        setEditingRevisionId(null);
+        setDraftConfig(clone(normalizeConfigForPublish(selectedChamber.activeConfigRevision.config)));
+      }
+      setConfigMessage(`rev.${revision.revision} をarchivedにしました。`);
+    } catch {
+      setConfigMessage('archiveに失敗しました。設定版の状態を確認してください。');
     }
   };
 
@@ -1678,13 +1861,37 @@ function AdminView({
                 <div className="text-slate-600">{configOwnershipLabel(selectedChamber.activeConfigRevision.config)}</div>
                 <div className="font-semibold">{describeChamberConfig(selectedChamber.activeConfigRevision.config)}</div>
               </div>
-              <div className="grid gap-2 border border-chamber-line bg-white p-3 text-xs text-slate-600">
-                {activeRevisions.slice(0, 4).map((revision) => (
-                  <div key={revision.id} className="flex items-center justify-between gap-3">
-                    <span>rev.{revision.revision}</span>
-                    <span className="font-semibold">{revision.status}</span>
+              <div className="grid gap-3 border border-chamber-line bg-white p-3 text-xs text-slate-600">
+                <div className="font-semibold text-chamber-ink">設定版</div>
+                {selectedRevisions.map((revision) => (
+                  <div key={revision.id} className="grid gap-2 border border-chamber-line bg-chamber-panel p-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-semibold">rev.{revision.revision}</span>
+                      <span className="font-semibold">{revision.status}</span>
+                    </div>
+                    <div className="truncate">{describeChamberConfig(revision.config)}</div>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" className="border border-chamber-line bg-white px-2 py-1 font-semibold" onClick={() => loadRevision(revision)}>
+                        {revision.status === 'draft' ? '編集' : '読込'}
+                      </button>
+                      {revision.status === 'draft' ? (
+                        <>
+                          <button type="button" className="border border-chamber-reserved bg-white px-2 py-1 font-semibold text-chamber-reserved" onClick={() => publishExistingDraft(revision)}>
+                            公開
+                          </button>
+                          <button type="button" className="border border-chamber-blocked bg-white px-2 py-1 font-semibold text-chamber-blocked" onClick={() => archiveDraft(revision)}>
+                            archive
+                          </button>
+                        </>
+                      ) : null}
+                    </div>
                   </div>
                 ))}
+                {selectedRevisions.length === 0 ? (
+                  <div className="border border-dashed border-chamber-line bg-white px-3 py-4 text-center font-semibold">
+                    設定版がありません。
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -1721,10 +1928,23 @@ function AdminView({
               ) : null}
 
               <div className="flex flex-wrap items-center gap-3">
-                <button type="button" className="inline-flex items-center gap-2 bg-chamber-reserved px-4 py-2 font-semibold text-white" onClick={publish}>
+                <button type="button" className="inline-flex items-center gap-2 border border-chamber-line bg-white px-4 py-2 font-semibold text-chamber-ink" onClick={saveDraft}>
                   <Save size={18} />
-                  設定公開
+                  draft保存
                 </button>
+                <button type="button" className="inline-flex items-center gap-2 bg-chamber-reserved px-4 py-2 font-semibold text-white" onClick={publish}>
+                  <Check size={18} />
+                  保存して公開
+                </button>
+                {editingRevision?.status === 'draft' ? (
+                  <button type="button" className="inline-flex items-center gap-2 border border-chamber-blocked bg-white px-4 py-2 font-semibold text-chamber-blocked" onClick={() => archiveDraft(editingRevision)}>
+                    <Trash2 size={18} />
+                    draftをarchive
+                  </button>
+                ) : null}
+                <span className="text-xs font-semibold text-slate-500">
+                  {editingRevision ? `rev.${editingRevision.revision} draft編集中` : '新規draftとして保存されます'}
+                </span>
                 {configMessage ? <span className="text-sm font-semibold text-slate-700">{configMessage}</span> : null}
               </div>
             </div>

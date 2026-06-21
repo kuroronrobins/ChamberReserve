@@ -167,6 +167,7 @@ export default function ChamberBlockMap({
   const renderCell = (cell: (typeof cells)[number], chamberSurface: boolean) => {
     const { block, tone, selected, disabled } = cell;
     const isDisabled = !isInteractive || disabled;
+    const hideVisibleLabel = chamberSurface && density === 'compact';
     return (
       <button
         key={block.id}
@@ -195,6 +196,7 @@ export default function ChamberBlockMap({
       >
         <span
           className={[
+            hideVisibleLabel ? 'sr-only' : '',
             chamberSurface ? `absolute ${chamberDensityClass[density].label} font-semibold` : '',
             chamberSurface && tone === 'selected' ? 'text-white drop-shadow-sm' : '',
             chamberSurface && tone !== 'selected' ? 'text-slate-600/78' : '',

@@ -11,6 +11,7 @@ import {
   isContiguousBlockSet,
   normalizeCycleCount,
   resolveReservationStatus,
+  validateChamberConditionConfig,
   validateCycleProgram,
 } from './reservationRules';
 import { searchReservationCandidates } from './searchEngine';
@@ -106,6 +107,30 @@ describe('reservationRules', () => {
       }),
     ).toBe(false);
     expect(validateCycleProgram(cycleConfig)).toEqual([]);
+  });
+
+  it('validates fixed and user-managed chamber configuration shapes', () => {
+    expect(validateChamberConditionConfig({
+      type: 'fixed_condition',
+      condition: { temperatureC: Number.NaN, humidityRh: 80 },
+      availabilityPolicy: { type: 'daily_window', startTime: '09:00', endTime: '17:00' },
+    })).toContain('一定温湿度条件の温度を入力してください。');
+
+    expect(validateChamberConditionConfig({
+      type: 'fixed_condition',
+      condition: { temperatureC: 40, humidityRh: 80 },
+      availabilityPolicy: { type: 'daily_window', startTime: '9:00', endTime: '17:00' },
+    })).toContain('利用可能開始時刻は HH:mm で入力してください。');
+
+    expect(validateChamberConditionConfig({
+      ...DEFAULT_USER_MANAGED_CONFIG,
+      temperatureRange: { minC: 80, maxC: 20, stepC: 1 },
+    })).toContain('ユーザー管理温度範囲の最小値が最大値を超えています。');
+
+    expect(validateChamberConditionConfig({
+      ...DEFAULT_USER_MANAGED_CONFIG,
+      humidityRange: { minRh: 20, maxRh: 95, stepRh: 0 },
+    })).toContain('ユーザー管理湿度刻みは0より大きい値にしてください。');
   });
 
   it('normalizes cycle counts to whole completed cycles and real access windows', () => {

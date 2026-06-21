@@ -10,6 +10,7 @@ import {
   DEFAULT_NOW_ISO,
   deleteReservationByPin,
   getAdminChambers,
+  getChamberConfigRevisions,
   getChambers,
   getReservationBoard,
   lookupReservationByPin,
@@ -323,6 +324,16 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     }
 
     const createConfigChamberId = adminConfigCreatePath(pathname);
+    if (createConfigChamberId && req.method === 'GET') {
+      const result = getChamberConfigRevisions(db, createConfigChamberId);
+      if (!result.ok) {
+        sendJson(res, result.status, { ok: false, error: result.error });
+        return;
+      }
+      sendJson(res, 200, { ok: true, configRevisions: result.configRevisions });
+      return;
+    }
+
     if (createConfigChamberId && req.method === 'POST') {
       const body = asRecord(await readJson(req));
       const config = readConfig(body.config);
@@ -352,6 +363,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
         return;
       }
       const result = patchChamberConfigRevision(db, configRevision.revisionId, {
+        chamberId: configRevision.chamberId,
         config,
         nowIso: typeof body.nowIso === 'string' ? body.nowIso : undefined,
       });
@@ -366,9 +378,18 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     const configAction = adminConfigActionPath(pathname);
     if (configAction && req.method === 'POST') {
       const result = configAction.action === 'publish'
-        ? publishChamberConfig(db, configAction.revisionId, DEFAULT_NOW_ISO)
-        : archiveChamberConfig(db, configAction.revisionId, DEFAULT_NOW_ISO);
-      sendJson(res, 200, { ok: true, ...result });
+        ? publishChamberConfig(db, configAction.revisionId, DEFAULT_NOW_ISO, configAction.chamberId)
+        : archiveChamberConfig(db, configAction.revisionId, DEFAULT_NOW_ISO, configAction.chamberId);
+      if (!result.ok) {
+        sendJson(res, result.status, { ok: false, error: result.error });
+        return;
+      }
+      sendJson(res, 200, {
+        ok: true,
+        revision: result.revision,
+        chambers: result.chambers,
+        configRevisions: result.configRevisions,
+      });
       return;
     }
 

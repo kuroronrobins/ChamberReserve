@@ -158,6 +158,61 @@ export function validateCycleProgram(config: TemperatureCycleConfig): string[] {
   return errors;
 }
 
+function isTimeOfDay(value: string | undefined): boolean {
+  return typeof value === 'string' && /^\d{2}:\d{2}$/.test(value);
+}
+
+export function validateChamberConditionConfig(config: ChamberConditionConfig): string[] {
+  if (config.type === 'temperature_cycle') {
+    return validateCycleProgram(config);
+  }
+
+  if (config.type === 'fixed_condition') {
+    const errors: string[] = [];
+    if (!Number.isFinite(config.condition.temperatureC)) {
+      errors.push('一定温湿度条件の温度を入力してください。');
+    }
+    if (config.condition.humidityRh !== undefined && !Number.isFinite(config.condition.humidityRh)) {
+      errors.push('一定温湿度条件の湿度を入力してください。');
+    }
+    if (config.availabilityPolicy.type === 'daily_window') {
+      if (!isTimeOfDay(config.availabilityPolicy.startTime)) {
+        errors.push('利用可能開始時刻は HH:mm で入力してください。');
+      }
+      if (!isTimeOfDay(config.availabilityPolicy.endTime)) {
+        errors.push('利用可能終了時刻は HH:mm で入力してください。');
+      }
+    }
+    return errors;
+  }
+
+  const errors: string[] = [];
+  if (!Number.isFinite(config.temperatureRange.minC) || !Number.isFinite(config.temperatureRange.maxC)) {
+    errors.push('ユーザー管理温度範囲を入力してください。');
+  }
+  if (config.temperatureRange.minC > config.temperatureRange.maxC) {
+    errors.push('ユーザー管理温度範囲の最小値が最大値を超えています。');
+  }
+  if (!Number.isFinite(config.temperatureRange.stepC) || config.temperatureRange.stepC <= 0) {
+    errors.push('ユーザー管理温度刻みは0より大きい値にしてください。');
+  }
+  if (config.humidityRange) {
+    if (!Number.isFinite(config.humidityRange.minRh) || !Number.isFinite(config.humidityRange.maxRh)) {
+      errors.push('ユーザー管理湿度範囲を入力してください。');
+    }
+    if (config.humidityRange.minRh > config.humidityRange.maxRh) {
+      errors.push('ユーザー管理湿度範囲の最小値が最大値を超えています。');
+    }
+    if (!Number.isFinite(config.humidityRange.stepRh) || config.humidityRange.stepRh <= 0) {
+      errors.push('ユーザー管理湿度刻みは0より大きい値にしてください。');
+    }
+  }
+  if (config.simultaneousUseRule !== 'exact_match_required') {
+    errors.push('同時利用条件は完全一致のみを選択してください。');
+  }
+  return errors;
+}
+
 function matchesAccessCondition(step: ResolvedCycleProgramStep, condition: EnvironmentCondition): boolean {
   const temperatureMatches = step.temperature.fromC === condition.temperatureC
     && step.temperature.toC === condition.temperatureC;

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { CHAMBER, CHAMBERS } from './chamber';
+import { CHAMBER, CHAMBERS, DEFAULT_FIXED_CONDITION_CONFIG } from './chamber';
 import { INITIAL_RESERVATIONS } from './mockData';
 import { buildCycleWindow } from './reservationRules';
-import type { Reservation, SearchRequest, TemperatureCycleConfig } from './types';
+import type { Chamber, Reservation, SearchRequest, TemperatureCycleConfig } from './types';
 import {
   buildCandidateId,
   buildSearchDateKeys,
@@ -20,6 +20,25 @@ const exactSearchRequest: SearchRequest = {
 
 const cycleConfig = CHAMBER.activeConfigRevision.config as TemperatureCycleConfig;
 
+function chamberWithActiveConfig(chamber: Chamber, config: Chamber['activeConfigRevision']['config']): Chamber {
+  const revision = {
+    ...chamber.activeConfigRevision,
+    id: `${chamber.id}-test-config`,
+    chamberId: chamber.id,
+    status: 'active' as const,
+    ownership: config.type === 'user_managed_condition' ? 'user_managed' as const : 'admin_managed' as const,
+    adminManagedKind: config.type === 'user_managed_condition' ? undefined : config.type,
+    config,
+    cyclePeriodMinutes: config.type === 'temperature_cycle' ? config.cyclePeriodMinutes : undefined,
+  };
+  return {
+    ...chamber,
+    type: config.type,
+    activeConfigRevisionId: revision.id,
+    activeConfigRevision: revision,
+  };
+}
+
 function reservationWithWindow(id: string, blocks: Reservation['blocks'], dateKey = '2026-06-26'): Reservation {
   const window = buildCycleWindow(dateKey, cycleConfig);
   return {
@@ -35,6 +54,32 @@ function reservationWithWindow(id: string, blocks: Reservation['blocks'], dateKe
 }
 
 describe('searchEngine', () => {
+  it('keeps empty block intent separate from fragmented block intent', () => {
+    const emptyResult = searchReservationCandidateResult(
+      {
+        desiredDate: '2026-06-26',
+        selectedBlocks: [],
+        placementMode: 'size',
+        cycleCount: 1,
+      },
+      { reservations: [], suspensions: [], chambers: [CHAMBER], searchWindowDays: 1 },
+    );
+    const fragmentedResult = searchReservationCandidateResult(
+      {
+        desiredDate: '2026-06-26',
+        selectedBlocks: ['r1c1', 'r3c4'],
+        placementMode: 'size',
+        cycleCount: 1,
+      },
+      { reservations: [], suspensions: [], chambers: [CHAMBER], searchWindowDays: 1 },
+    );
+
+    expect(emptyResult.candidates).toHaveLength(0);
+    expect(emptyResult.unavailableReasons[0]?.code).toBe('empty_blocks');
+    expect(fragmentedResult.candidates).toHaveLength(0);
+    expect(fragmentedResult.unavailableReasons[0]?.code).toBe('non_contiguous_blocks');
+  });
+
   it('keeps search window expansion explicit and configurable', () => {
     expect(buildSearchDateKeys('2026-06-24')).toHaveLength(DEFAULT_CANDIDATE_SEARCH_WINDOW_DAYS);
     expect(buildSearchDateKeys('2026-06-24', 2)).toEqual(['2026-06-24', '2026-06-25']);
@@ -176,5 +221,41 @@ describe('searchEngine', () => {
     expect(result.alternativeDateCandidates).toHaveLength(1);
     expect(result.candidates).toEqual(result.alternativeDateCandidates);
     expect(result.unavailableReasons[0]?.code).toBe('no_contiguous_placement');
+  });
+
+  it('requires explicit matching conditions for fixed-condition chambers', () => {
+    const fixedChamber = chamberWithActiveConfig(CHAMBER, {
+      ...DEFAULT_FIXED_CONDITION_CONFIG,
+      condition: { temperatureC: 40, humidityRh: 80 },
+    });
+    const baseRequest: SearchRequest = {
+      desiredDate: '2026-06-26',
+      selectedBlocks: ['r2c2'],
+      placementMode: 'exact',
+      cycleCount: 1,
+      conditionMode: 'environment',
+      environmentStartTime: '10:00',
+      environmentDurationHours: 2,
+    };
+
+    const missingCondition = searchReservationCandidates(baseRequest, {
+      reservations: [],
+      suspensions: [],
+      chambers: [fixedChamber],
+      searchWindowDays: 1,
+    });
+    const mismatchedCondition = searchReservationCandidates(
+      { ...baseRequest, requestedCondition: { temperatureC: 25, humidityRh: 93 } },
+      { reservations: [], suspensions: [], chambers: [fixedChamber], searchWindowDays: 1 },
+    );
+    const matchedCondition = searchReservationCandidates(
+      { ...baseRequest, requestedCondition: { temperatureC: 40, humidityRh: 80 } },
+      { reservations: [], suspensions: [], chambers: [fixedChamber], searchWindowDays: 1 },
+    );
+
+    expect(missingCondition).toHaveLength(0);
+    expect(mismatchedCondition).toHaveLength(0);
+    expect(matchedCondition).toHaveLength(1);
+    expect(matchedCondition[0].conditionSummary).toContain('40C');
   });
 });

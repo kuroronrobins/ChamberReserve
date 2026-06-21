@@ -8,7 +8,7 @@ Use this file as the first orientation point for implementation work in this rep
 - The long-term implementation plan is in `docs/CHAMBER_RESERVE_LONG_TERM_IMPLEMENTATION_PLAN.md`.
 - Completed implementation/start documents are archived under `docs/archive/2026-06-22-implemented/`.
 - The repository now has React/Vite UI, Node.js API, SQLite-backed local persistence, tests, and a lightweight `main.py` launcher. Still verify files, scripts, routes, and tests before relying on them.
-- Current active start/goal documents are `docs/CHAMBER_RESERVE_SEARCH_BLOCK_INTENT_INPUT_START.md`, `docs/CHAMBER_RESERVE_SEARCH_BLOCK_INTENT_INPUT_GOAL.md`, `docs/CHAMBER_RESERVE_CHAMBER_ADMIN_CONFIGURATION_START.md`, and `docs/CHAMBER_RESERVE_CHAMBER_ADMIN_CONFIGURATION_GOAL.md`.
+- Current active start/goal documents are `docs/CHAMBER_RESERVE_OVERNIGHT_PHASE3_6_EXPANSION_START.md`, `docs/CHAMBER_RESERVE_OVERNIGHT_PHASE3_6_EXPANSION_GOAL.md`, `docs/CHAMBER_RESERVE_SEARCH_BLOCK_INTENT_INPUT_START.md`, `docs/CHAMBER_RESERVE_SEARCH_BLOCK_INTENT_INPUT_GOAL.md`, `docs/CHAMBER_RESERVE_CHAMBER_ADMIN_CONFIGURATION_START.md`, and `docs/CHAMBER_RESERVE_CHAMBER_ADMIN_CONFIGURATION_GOAL.md`.
 - The user workflow must remain shaped for multi-chamber search.
 
 ## Goal Execution Policy
@@ -25,8 +25,8 @@ Use this file as the first orientation point for implementation work in this rep
 2. `docs/CHAMBER_RESERVE_SYSTEM_SPEC.md`.
 3. `docs/CHAMBER_RESERVE_LONG_TERM_IMPLEMENTATION_PLAN.md`.
 4. `docs/GOAL_IMPLEMENTATION_POLICY.md`.
-5. The active phase start document, such as `docs/CHAMBER_RESERVE_SEARCH_BLOCK_INTENT_INPUT_START.md` or `docs/CHAMBER_RESERVE_CHAMBER_ADMIN_CONFIGURATION_START.md`.
-6. The active phase goal or execution plan, such as `docs/CHAMBER_RESERVE_SEARCH_BLOCK_INTENT_INPUT_GOAL.md` or `docs/CHAMBER_RESERVE_CHAMBER_ADMIN_CONFIGURATION_GOAL.md`, when it exists.
+5. The active phase start document, such as `docs/CHAMBER_RESERVE_OVERNIGHT_PHASE3_6_EXPANSION_START.md`, `docs/CHAMBER_RESERVE_SEARCH_BLOCK_INTENT_INPUT_START.md`, or `docs/CHAMBER_RESERVE_CHAMBER_ADMIN_CONFIGURATION_START.md`.
+6. The active phase goal or execution plan, such as `docs/CHAMBER_RESERVE_OVERNIGHT_PHASE3_6_EXPANSION_GOAL.md`, `docs/CHAMBER_RESERVE_SEARCH_BLOCK_INTENT_INPUT_GOAL.md`, or `docs/CHAMBER_RESERVE_CHAMBER_ADMIN_CONFIGURATION_GOAL.md`, when it exists.
 7. `package.json`, once it exists, for scripts and dependency versions.
 8. Application entry points, once they exist.
 9. Only then open the specific feature, domain, server, or test file related to the task.

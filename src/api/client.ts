@@ -199,6 +199,14 @@ export async function fetchAdminChambersApi(): Promise<{
   };
 }
 
+export async function fetchChamberConfigRevisionsApi(chamberId: string): Promise<ChamberConfigRevision[]> {
+  const payload = await requestJson<{
+    ok: true;
+    configRevisions: ChamberConfigRevision[];
+  }>(`/admin/chambers/${encodeURIComponent(chamberId)}/config-revisions`);
+  return payload.configRevisions;
+}
+
 export async function validateChamberConfigApi(config: ChamberConditionConfig): Promise<{
   valid: boolean;
   errors: string[];

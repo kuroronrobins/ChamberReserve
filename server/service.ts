@@ -21,7 +21,7 @@ import {
   normalizeTemperatureCycleConfig,
   parseDateKey,
   resolveReservationStatus,
-  validateCycleProgram,
+  validateChamberConditionConfig,
   windowsOverlap,
 } from '../src/domain/reservationRules.ts';
 import { searchReservationCandidateResult, searchReservationCandidates } from '../src/domain/searchEngine.ts';
@@ -55,6 +55,14 @@ export function getAdminChambers(db: DatabaseSync) {
     chambers: listChambers(db),
     configRevisions: listConfigRevisions(db),
   };
+}
+
+export function getChamberConfigRevisions(db: DatabaseSync, chamberId: string) {
+  const chamber = getChamber(db, chamberId);
+  if (!chamber) {
+    return { ok: false as const, status: 404, error: 'chamber_not_found' };
+  }
+  return { ok: true as const, configRevisions: listConfigRevisions(db, chamberId) };
 }
 
 export function searchCandidates(
@@ -272,20 +280,7 @@ function normalizeConfig(config: ChamberConditionConfig): ChamberConditionConfig
 }
 
 export function validateChamberConfig(config: ChamberConditionConfig): string[] {
-  if (config.type === 'temperature_cycle') {
-    return validateCycleProgram(config);
-  }
-  if (config.type === 'fixed_condition') {
-    return Number.isFinite(config.condition.temperatureC) ? [] : ['一定温湿度の温度を入力してください。'];
-  }
-  const errors: string[] = [];
-  if (config.temperatureRange.minC > config.temperatureRange.maxC) {
-    errors.push('ユーザー温度範囲の最小値が最大値を超えています。');
-  }
-  if (config.humidityRange && config.humidityRange.minRh > config.humidityRange.maxRh) {
-    errors.push('ユーザー湿度範囲の最小値が最大値を超えています。');
-  }
-  return errors;
+  return validateChamberConditionConfig(config);
 }
 
 export function createChamberConfigRevision(
@@ -328,6 +323,7 @@ export function patchChamberConfigRevision(
   db: DatabaseSync,
   revisionId: string,
   input: {
+    chamberId?: string;
     config: ChamberConditionConfig;
     nowIso?: string;
   },
@@ -335,6 +331,12 @@ export function patchChamberConfigRevision(
   const revision = getConfigRevision(db, revisionId);
   if (!revision) {
     return { ok: false as const, status: 404, error: 'config_revision_not_found' };
+  }
+  if (input.chamberId && revision.chamberId !== input.chamberId) {
+    return { ok: false as const, status: 404, error: 'config_revision_not_found' };
+  }
+  if (revision.status !== 'draft') {
+    return { ok: false as const, status: 409, error: 'config_revision_not_draft' };
   }
   const config = normalizeConfig(input.config);
   const errors = validateChamberConfig(config);
@@ -353,18 +355,48 @@ export function patchChamberConfigRevision(
   return { ok: true as const, revision: updated };
 }
 
-export function publishChamberConfig(db: DatabaseSync, revisionId: string, nowIso = DEFAULT_NOW_ISO) {
+export function publishChamberConfig(db: DatabaseSync, revisionId: string, nowIso = DEFAULT_NOW_ISO, chamberId?: string) {
+  const existing = getConfigRevision(db, revisionId);
+  if (!existing) {
+    return { ok: false as const, status: 404, error: 'config_revision_not_found' };
+  }
+  if (chamberId && existing.chamberId !== chamberId) {
+    return { ok: false as const, status: 404, error: 'config_revision_not_found' };
+  }
+  if (existing.status !== 'draft') {
+    return { ok: false as const, status: 409, error: 'config_revision_not_draft' };
+  }
   const revision = publishConfigRevision(db, revisionId, nowIso);
   return {
+    ok: true as const,
     revision,
     chambers: listChambers(db),
     configRevisions: listConfigRevisions(db),
   };
 }
 
-export function archiveChamberConfig(db: DatabaseSync, revisionId: string, nowIso = DEFAULT_NOW_ISO) {
+export function archiveChamberConfig(db: DatabaseSync, revisionId: string, nowIso = DEFAULT_NOW_ISO, chamberId?: string) {
+  const existing = getConfigRevision(db, revisionId);
+  if (!existing) {
+    return { ok: false as const, status: 404, error: 'config_revision_not_found' };
+  }
+  if (chamberId && existing.chamberId !== chamberId) {
+    return { ok: false as const, status: 404, error: 'config_revision_not_found' };
+  }
+  if (existing.status === 'active') {
+    return { ok: false as const, status: 409, error: 'active_config_revision_archive_blocked' };
+  }
+  if (existing.status === 'archived') {
+    return {
+      ok: true as const,
+      revision: existing,
+      chambers: listChambers(db),
+      configRevisions: listConfigRevisions(db),
+    };
+  }
   const revision = archiveConfigRevision(db, revisionId, nowIso);
   return {
+    ok: true as const,
     revision,
     chambers: listChambers(db),
     configRevisions: listConfigRevisions(db),

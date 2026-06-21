@@ -33,6 +33,7 @@ export const DEFAULT_CANDIDATE_SEARCH_WINDOW_DAYS = 4;
 export type SizeModeCandidatePolicy = 'representative-per-bucket' | 'all-placements';
 
 export type CandidateUnavailableReasonCode =
+  | 'empty_blocks'
   | 'non_contiguous_blocks'
   | 'no_matching_chamber'
   | 'exact_location_unavailable'
@@ -260,7 +261,17 @@ export function searchReservationCandidateResult(
   request: SearchRequest,
   context: CandidateSearchEngineContext,
 ): CandidateSearchResult {
-  if (request.selectedBlocks.length === 0 || !isContiguousBlockSet(request.selectedBlocks)) {
+  if (request.selectedBlocks.length === 0) {
+    return buildCandidateSearchResult(request, [], [
+      {
+        dateKey: request.desiredDate,
+        code: 'empty_blocks',
+        message: '希望ブロック条件を1つ以上選択してください。',
+      },
+    ]);
+  }
+
+  if (!isContiguousBlockSet(request.selectedBlocks)) {
     return buildCandidateSearchResult(request, [], [
       {
         dateKey: request.desiredDate,
@@ -349,7 +360,7 @@ function conditionMatchesFixedCondition(
   requestedCondition?: UserManagedReservationCondition,
 ): boolean {
   if (!requestedCondition) {
-    return true;
+    return false;
   }
   return requestedCondition.temperatureC === config.condition.temperatureC
     && (requestedCondition.humidityRh ?? null) === (config.condition.humidityRh ?? null);
